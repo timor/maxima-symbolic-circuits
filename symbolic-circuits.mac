@@ -70,3 +70,7 @@ solve_circuit():=map("=",list_matrix_entries(result_vector()),list_matrix_entrie
 sparse_eq():=sparse_matrix() . result_vector() = source_vector();
 
 show_branches():=for i in rest(rest(arrayinfo(branches))) do print(branches[i[1],i[2]], ": ",i);
+
+
+/* helper function for getting a subset of equations from an existing solution */
+pick(solution,vars):=map(lambda([x],x=assoc(x,sol,0)),vars);
