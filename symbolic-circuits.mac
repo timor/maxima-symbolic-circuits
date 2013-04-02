@@ -1,0 +1,62 @@
+
+load("eigen")$
+
+kill(branches);
+
+kill(incidence);
+
+kill(voltage_coeffs);
+
+kill(current_coeffs);
+
+kill(voltage_sources);
+
+node_counter:0;
+
+branch_counter:0;
+
+impedance(snode,tnode,z):=block([
+    branch:(if numberp(branches[snode,tnode]) then
+                branches[snode,tnode] else
+                (branch_counter:branch_counter+1,branches[snode,tnode]:branch_counter,branch_counter))],
+    if (snode>node_counter) then node_counter:snode,
+    if (tnode>node_counter) then node_counter:tnode,
+    incidence[snode,branch]:1,
+    incidence[tnode,branch]:-1,
+    voltage_coeffs[branch,branch]:1,
+    current_coeffs[branch,branch]:-z,
+    voltage_sources[branch]:0
+    )$
+
+get_sparse(mat,s,d):=if numberp(mat[s,d]) then mat[s,d] else 0;
+
+incidence_matrix():=block([mat:
+        genmatrix(lambda([x,y],get_sparse(incidence,x,y)),node_counter,node_counter)],
+    submatrix(1,mat));
+
+vcoeff_matrix():=genmatrix(lambda([x,y],get_sparse(voltage_coeffs,x,y)),branch_counter,branch_counter);
+
+icoeff_matrix():=genmatrix(lambda([x,y],get_sparse(current_coeffs,x,y)),branch_counter,branch_counter);
+
+symbols_vector(sym,num):=columnvector(makelist(concat(sym,k),k,1,num));
+
+current_equations():=incidence_matrix() . symbols_vector('i,branch_counter)=zeromatrix(branch_counter-1,1);
+
+voltage_equations():=symbols_vector('v,branch_counter) = transpose(incidence_matrix()) . symbols_vector('e,node_counter-1);
+
+impedance(2,1,S1);
+
+impedance(2,3,Z1);
+
+impedance(3,1,Z2);
+
+icoeff_matrix();
+
+? sublist;
+
+has_element(hashed_array,index):=member(index,rest(rest(arrayinfo(hashed_array))));
+
+has_element(current_coeffs,[1,1]);
+
+member([1,1],rest(rest(arrayinfo(current_coeffs))));
+
