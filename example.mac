@@ -22,3 +22,90 @@ solution:solve_circuit();
 
 /*calculate input output ratio*/
 e3/e2,solution,ratsimp;
+
+
+/* inverting opamp example */
+reset_circuit(4,4);
+/* nodes:
+1 gnd
+2 circuit input
+3 inverting input
+4 output
+non-inverting input is gnd
+*/
+
+voltage(2,1,U0);
+impedance(2,3,Z1);
+impedance(4,3,Z2);
+/* arbitrary dependent voltage source */
+voltage(4,1,A*(e3),Ra);
+
+depsolution:solve_circuit();
+
+/* Note that solution still contains the dependent source terms, this
+is a limitation of the (fast) solution algorithm of the initial
+solution.  We can use linsolve again to get the final equations with
+opamp feedback calculated.  The unkowns() function is a helper which
+lists all initial circuit unkowns. */
+
+indepsolution:linsolve(depsolution,unknowns());
+
+/* solution for ideal opamp */
+idealsolution:limit(indepsolution,A,inf),Ra=0;
+
+/* input output ratio */
+e4/e2,idealsolution;
+
+/*input impedance*/
+U0/-i1,idealsolution;
+
+/*going back to non-ideal opamp*/
+e4/e2,indepsolution;
+
+/* the following part isn't really specific to the symbolic circuit
+tools, but illustrates working with the results */
+
+/* replacing with two-pole opamp model (could also be done to the whole solution)*/
+load("bode");
+
+G(s):=at(e4/e2,indepsolution);
+G_op:1e6/((1+s/(2*%pi*1))*(1+s/(2*%pi*100e3)));
+/* check transfer function if wanted */
+
+/*
+bode_gain(G_op,[f,0.1,100e6]),s=2*%pi*s;
+bode_phase(G_op,[f,0.1,100e6]),s=2*%pi*s;
+*/
+
+G2(s):=ev(at(G(s),[A=G_op,Z1=20e3,Z2=10e3,Ra=100]));
+/* dc gain */
+limit(G2(%i*omega),omega,0);
+/* could also have been done symbolically... */
+ 
+/* asymptotic gain */
+limit(G2(%i*omega),omega,inf);
+
+/*
+bode_gain(G2(2*%pi*f),[f,1,100e6]);
+bode_phase(G2(2*%pi*f),[f,1,100e6]);
+*/
+
+/* plot shows distinct characteristics,  lets look at the zeroes...*/
+solve(ratnumer(G2(s))=0,s)$
+float(%),s=sigma+%i*omega$
+[realpart(%),imagpart(%)];
+
+/* and the poles */
+solve(ratdenom(G2(s))=0,s)$
+float(%),s=sigma+%i*omega$
+[realpart(%),imagpart(%)];
+
+/* where do the zeroes come from? let's step back*/
+at(G(s),[A=G_op]),ratsimp;
+zeroes:solve(ratnumer(%)=0,s);
+/* seems like the output impedance... */
+at(G(s),[A=G_op,Ra=0]),ratsimp;
+/*...gone, wanna see?*/
+/*
+bode_gain(%,[f,1,100e6]),Z1=20e3,Z2=10e3,s=2*%pi*s;
+*/
