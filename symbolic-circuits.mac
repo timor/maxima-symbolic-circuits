@@ -1,62 +1,67 @@
-
 load("eigen")$
 
-kill(branches);
+reset_circuit(nodes,nbranches):=block([],
+    incidence_matrix:zeromatrix(nodes,nbranches),
+    voltage_coeffs:zeromatrix(nbranches,nbranches),
+    current_coeffs:zeromatrix(nbranches,nbranches),
+    voltage_sources:zeromatrix(nbranches,1),
+    kill(branches),
+    num_nodes:nodes,
+    num_branches:nbranches,
+    branch_counter:0);
 
-kill(incidence);
-
-kill(voltage_coeffs);
-
-kill(current_coeffs);
-
-kill(voltage_sources);
-
-node_counter:0;
-
-branch_counter:0;
+getbranchcreate(snode,tnode):=if numberp(branches[snode,tnode]) then
+                                    branches[snode,tnode] elseif
+                                numberp(branches[tnode,snode]) then
+                                    branches[tnode,snode] else
+(branch_counter:branch_counter+1,branches[snode,tnode]:branch_counter,branch_counter)$
 
 impedance(snode,tnode,z):=block([
-    branch:(if numberp(branches[snode,tnode]) then
-                branches[snode,tnode] else
-                (branch_counter:branch_counter+1,branches[snode,tnode]:branch_counter,branch_counter))],
-    if (snode>node_counter) then node_counter:snode,
-    if (tnode>node_counter) then node_counter:tnode,
-    incidence[snode,branch]:1,
-    incidence[tnode,branch]:-1,
+    branch:getbranchcreate(snode,tnode)],
+    incidence_matrix[snode,branch]:1,
+    incidence_matrix[tnode,branch]:-1,
     voltage_coeffs[branch,branch]:1,
     current_coeffs[branch,branch]:-z,
-    voltage_sources[branch]:0
+    voltage_sources[branch,1]:0
     )$
 
-get_sparse(mat,s,d):=if numberp(mat[s,d]) then mat[s,d] else 0;
+voltage(snode,tnode,u):=block([
+        branch:getbranchcreate(snode,tnode)],
+    incidence_matrix[snode,branch]:1,
+    incidence_matrix[tnode,branch]:-1,
+    voltage_coeffs[branch,branch]:1,
+    current_coeffs[branch,branch]:0,
+    voltage_sources[branch,1]:u)$
 
-incidence_matrix():=block([mat:
-        genmatrix(lambda([x,y],get_sparse(incidence,x,y)),node_counter,node_counter)],
-    submatrix(1,mat));
+current(snode,tnode,i):=block([
+        branch:getbranchcreate(snode,tnode)],
+    incidence_matrix[snode,branch]:1,
+    incidence_matrix[tnode,branch]:-1,
+    voltage_coeffs[branch,branch]:0,
+    current_coeffs[branch,branch]:1,
+    voltage_sources[branch,1]:i)$
 
-vcoeff_matrix():=genmatrix(lambda([x,y],get_sparse(voltage_coeffs,x,y)),branch_counter,branch_counter);
+symbols_vector(sym,num,offset):=columnvector(makelist(concat(sym,k),k,1+offset,num+offset));
 
-icoeff_matrix():=genmatrix(lambda([x,y],get_sparse(current_coeffs,x,y)),branch_counter,branch_counter);
+min_incidence():=submatrix(1,incidence_matrix);
 
-symbols_vector(sym,num):=columnvector(makelist(concat(sym,k),k,1,num));
+sparse_matrix():=block([
+                    row1:zeromatrix(num_nodes-1,num_nodes-1),
+                    row2:-transpose(min_incidence()),
+                    row3:zeromatrix(num_branches,num_nodes-1)],
+    row1:addcol(row1,zeromatrix(num_nodes-1,num_branches),min_incidence()),
+    row2:addcol(row2,ident(num_branches),zeromatrix(num_branches,num_branches)),
+    row3:addcol(row3,voltage_coeffs,current_coeffs),
+    addrow(row1,row2,row3))$
 
-current_equations():=incidence_matrix() . symbols_vector('i,branch_counter)=zeromatrix(branch_counter-1,1);
+source_vector():= addrow(zeromatrix(num_nodes-1,1),zeromatrix(num_branches,1),voltage_sources);
 
-voltage_equations():=symbols_vector('v,branch_counter) = transpose(incidence_matrix()) . symbols_vector('e,node_counter-1);
+result_vector():=addrow(symbols_vector('e,num_nodes-1,1),symbols_vector('v,num_branches,0),symbols_vector('i,num_branches,0));
 
-impedance(2,1,S1);
+unknowns():=list_matrix_entries(result_vector());
 
-impedance(2,3,Z1);
+solve_circuit():=map("=",list_matrix_entries(result_vector()),list_matrix_entries(linsolve_by_lu(sparse_matrix(),source_vector())[1]));
 
-impedance(3,1,Z2);
+sparse_eq():=sparse_matrix() . result_vector() = source_vector();
 
-icoeff_matrix();
-
-? sublist;
-
-has_element(hashed_array,index):=member(index,rest(rest(arrayinfo(hashed_array))));
-
-has_element(current_coeffs,[1,1]);
-
-member([1,1],rest(rest(arrayinfo(current_coeffs))));
-
+show_branches():=for i in rest(rest(arrayinfo(branches))) do print(branches[i[1],i[2]], ": ",i);
