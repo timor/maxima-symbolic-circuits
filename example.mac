@@ -1,0 +1,21 @@
+/* voltage divider */
+
+load("~/maxima/maxima-symbolic-circuits/symbolic-circuits.mac");
+
+reset_circuit(3,3);
+
+voltage(2,1,U0);
+
+impedance(3,2,R1);
+
+impedance(3,1,R2);
+
+/*show some internals*/
+min_incidence();
+sparse_matrix();
+result_vector();
+source_vector();
+sparse_eq();
+
+/*actually solve the circuit*/
+solve_circuit();
