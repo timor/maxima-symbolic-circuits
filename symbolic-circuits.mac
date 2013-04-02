@@ -22,16 +22,19 @@ impedance(snode,tnode,z):=block([
     incidence_matrix[tnode,branch]:-1,
     voltage_coeffs[branch,branch]:1,
     current_coeffs[branch,branch]:-z,
-    voltage_sources[branch,1]:0
+    voltage_sources[branch,1]:0,
+    branch
     )$
 
-voltage(snode,tnode,u):=block([
+voltage(snode,tnode,u,[Zi]):=block([
         branch:getbranchcreate(snode,tnode)],
     incidence_matrix[snode,branch]:1,
     incidence_matrix[tnode,branch]:-1,
     voltage_coeffs[branch,branch]:1,
-    current_coeffs[branch,branch]:0,
-    voltage_sources[branch,1]:u)$
+    current_coeffs[branch,branch]:(if emptyp(Zi) then 0 else -first(Zi)),
+    voltage_sources[branch,1]:u,
+    branch
+    )$
 
 current(snode,tnode,i):=block([
         branch:getbranchcreate(snode,tnode)],
@@ -39,7 +42,9 @@ current(snode,tnode,i):=block([
     incidence_matrix[tnode,branch]:-1,
     voltage_coeffs[branch,branch]:0,
     current_coeffs[branch,branch]:1,
-    voltage_sources[branch,1]:i)$
+    voltage_sources[branch,1]:i,
+    branch
+    )$
 
 symbols_vector(sym,num,offset):=columnvector(makelist(concat(sym,k),k,1+offset,num+offset));
 
