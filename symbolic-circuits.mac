@@ -73,4 +73,4 @@ show_branches():=for i in rest(rest(arrayinfo(branches))) do print(branches[i[1]
 
 
 /* helper function for getting a subset of equations from an existing solution */
-pick(solution,vars):=map(lambda([x],x=assoc(x,sol,0)),vars);
+pick(solution,vars):=map(lambda([x],x=assoc(x,solution,0)),vars);
